@@ -35,32 +35,58 @@
 
 #define BUFFER_SIZE 1024
 #define MAX_QUEUE 5
+#define NUM_CHAT_TABLES 3
+#define MAX_CHATS_PER_TABLE 10
+
+typedef enum {false, true} bool;
+
+typedef struct {
+  char *name;
+  int client_fd;
+  bool ready;
+} chat_t;
+
+typedef struct {
+  char *topic;
+  int numOfChats;
+  chat_t *chats;
+} chat_table_t;
+
+typedef struct {
+  chat_t *chat;
+  chat_table_t *tables;
+} thread_data_t;
 
 ///// FUNCTION DECLARATIONS
 void usage(char *);
 void setupHandlers();
 void interruptionHandler(int);
-void waitForConnections(int);
+void waitForConnections(int, chat_table_t *);
 void *attentionThread(void *);
+void initChatTables(chat_table_t *);
 
 ///// MAIN FUNCTION
 int main(int argc, char *argv[]){
     int server_fd;
+    chat_table_t tables[NUM_CHAT_TABLES];
 
     // Check the correct arguments
     if (argc != 2){
         usage(argv[0]);
     }
-    printf("\n=== SIMPLE BANK SERVER ===\n");
+    printf("\n=== CHAT SERVER ===\n");
     // Configure the handler to catch SIGINT
     setupHandlers();
 
 	  // Show the IPs assigned to this computer
 	  printLocalIPs();
+
+    initChatTables(tables);
+
     // Start the server
     server_fd = initServer(argv[1], MAX_QUEUE);
 	  // Listen for connections from the clients
-    waitForConnections(server_fd);
+    waitForConnections(server_fd, tables);
     // Close the socket
     close(server_fd);
 
@@ -101,7 +127,7 @@ void interruptionHandler(int sig){
 /*
     Main loop to wait for incomming connections
 */
-void waitForConnections(int server_fd){
+void waitForConnections(int server_fd, chat_table_t *_tables){
     struct sockaddr_in client_address;
     socklen_t client_address_size;
     char client_presentation[INET_ADDRSTRLEN];
@@ -148,7 +174,9 @@ void waitForConnections(int server_fd){
         				// Get the data from the client
         				inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
         				printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
-        				// Prepare the structure to send to the thread
+
+                // Prepare the structure to send to the thread
+                
 
         				// Create thread
                 pthread_t client_thread;
@@ -167,4 +195,15 @@ void waitForConnections(int server_fd){
 */
 void *attentionThread(void *arg){
   pthread_exit(NULL);
+}
+
+void initChatTables(chat_table_t *chat_tables){
+  for (size_t i = 0; i < NUM_CHAT_TABLES; i++) {
+    chat_tables[i]->numOfChats = 0;
+    chat_tables[i]->chats = malloc(MAX_CHATS_PER_TABLE * sizeof(chat_t));
+    if(i == 0) chat_tables[i]->topic = "Math";
+    else if(i == 1) chat_tables[i]->topic = "Nezfliz";
+    else if(i == 2) chat_tables[i]->topic = "Chess";
+    else chat_tables[i]->topic = "Other";
+  }
 }

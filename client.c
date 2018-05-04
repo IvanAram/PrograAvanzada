@@ -29,6 +29,11 @@
 
 #define BUFFER_SIZE 1024
 
+typedef struct {
+  char *message;
+  char *key;
+} message_t;
+
 ///// FUNCTION DECLARATIONS
 void usage(char *);
 void chatOperations(int);
@@ -47,6 +52,7 @@ int main(int argc, char *argv[]){
 
   // Use the bank operations available
   printf("\n=== CHAT CLIENT PROGRAM ===\n");
+
   chatOperations(connection_fd);
   // Close the socket
   close(connection_fd);
@@ -68,5 +74,11 @@ void usage(char *program){
     Main menu with the options available to the user
 */
 void chatOperations(int connection_fd){
+  char buffer[BUFFER_SIZE]:
+  char *name;
 
+  printf("Enter your name: ");
+  scanf("%s\n", name);
+
+  sprintf(buffer, "")
 }
