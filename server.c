@@ -145,7 +145,7 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     client_address_size = sizeof client_address;
 
     while (1){
-		    //// POLL
+		//// POLL
         // Create a structure array to hold the file descriptors to poll
         struct pollfd test_fds[1];
         // Fill in the structure
@@ -179,7 +179,7 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     			// Get the data from the client
     			inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
     			printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
-
+                
           // Prepare the structure to send to the thread
 					thread_data_t thread_data;
 					thread_data.tables = _tables;
@@ -209,13 +209,13 @@ void *attentionThread(void *arg){
   response_t response;
   int number = -1;
   
+  // Receive clients name
   if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
     pthread_exit(NULL);
   }
-  
   sscanf(buffer, "%d %s", &operation, chat.name);
-  
+  // Main while 
   while(operation != EXIT){
   	if(number >= 0){
   		if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
@@ -230,7 +230,6 @@ void *attentionThread(void *arg){
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
   			sendString(data->client_fd, buffer);
-  			
   			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
   			sendString(data->client_fd, buffer);
   			break;
@@ -303,6 +302,9 @@ void *attentionThread(void *arg){
   pthread_exit(NULL);
 }
 
+/*
+    Initialize chat tables
+*/
 void initChatTables(chat_table_t *chat_tables){
   for (size_t i = 0; i < NUM_CHAT_TABLES; i++) {
     chat_tables[i].numOfChats = 0;

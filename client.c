@@ -80,11 +80,14 @@ void chatOperations(int connection_fd) {
 	int operation = NAME;
 	
 	// Start interaction with user's client
-	printf("Enter your name: ");
-	scanf("%s\n", name);
-	printf("hola");
-
+	printf("Enter your display name: ");
+	if( fgets(name, 50, stdin) == -1 ) {
+		printf("Error reading the name");
+		exit(EXIT_FAILURE);
+	}
+	
 	sprintf(buffer, "%d %s", operation, name);
+
 	sendString(connection_fd, buffer);
 
 	// Recieve response of the user creation
@@ -94,12 +97,16 @@ void chatOperations(int connection_fd) {
     }
     sscanf(buffer, "%d %d", &operation, &chat_room);
 	
+
 	if(operation == OK) {
+		printf("hola %s", name);
 		// Recieve the topics if the name creating was OK
 		if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 	        printf("The server got lost while finding the topics\n");
 	        exit(EXIT_FAILURE);
 	    }
+	    
+
 	    sscanf(buffer, "%s %s %s", topics[0], topics[1], topics[2]);
 	    // Ask user what topics does he want to join, save in chat_room
 	    printf("-+-+-+-+- Select a topic -+-+-+-+-");
