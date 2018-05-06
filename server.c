@@ -32,6 +32,7 @@
 // Custom libraries
 #include "sockets.h"
 #include "fatal_error.h"
+#include "codes.h"
 
 #define BUFFER_SIZE 1024
 #define MAX_QUEUE 5
@@ -176,7 +177,7 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
         				printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
 
                 // Prepare the structure to send to the thread
-                
+
 
         				// Create thread
                 pthread_t client_thread;
@@ -199,11 +200,11 @@ void *attentionThread(void *arg){
 
 void initChatTables(chat_table_t *chat_tables){
   for (size_t i = 0; i < NUM_CHAT_TABLES; i++) {
-    chat_tables[i]->numOfChats = 0;
-    chat_tables[i]->chats = malloc(MAX_CHATS_PER_TABLE * sizeof(chat_t));
-    if(i == 0) chat_tables[i]->topic = "Math";
-    else if(i == 1) chat_tables[i]->topic = "Nezfliz";
-    else if(i == 2) chat_tables[i]->topic = "Chess";
-    else chat_tables[i]->topic = "Other";
+    chat_tables[i].numOfChats = 0;
+    chat_tables[i].chats = malloc(MAX_CHATS_PER_TABLE * sizeof(chat_t));
+    if(i == 0) chat_tables[i].topic = "Math";
+    else if(i == 1) chat_tables[i].topic = "Nezfliz";
+    else if(i == 2) chat_tables[i].topic = "Chess";
+    else chat_tables[i].topic = "Other";
   }
 }

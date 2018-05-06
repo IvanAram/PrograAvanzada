@@ -26,6 +26,7 @@
 // Custom libraries
 #include "sockets.h"
 #include "fatal_error.h"
+#include "codes.h"
 
 #define BUFFER_SIZE 1024
 
@@ -74,11 +75,13 @@ void usage(char *program){
     Main menu with the options available to the user
 */
 void chatOperations(int connection_fd){
-  char buffer[BUFFER_SIZE]:
-  char *name;
+  char buffer[BUFFER_SIZE];
+  operation_t operation = NAME;
 
   printf("Enter your name: ");
-  scanf("%s\n", name);
+  scanf("%s\n", buffer);
 
-  sprintf(buffer, "")
+  sendString(connection_fd, buffer);
+
+  //sprintf(buffer, "")
 }
