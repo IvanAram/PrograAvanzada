@@ -37,24 +37,25 @@
 #define BUFFER_SIZE 1024
 #define MAX_QUEUE 5
 #define NUM_CHAT_TABLES 3
-#define MAX_CHATS_PER_TABLE 10
+#define MAX_MESSAGES_PER_TABLES 10
 
 typedef enum {false, true} bool;
 
 typedef struct {
   char *name;
-  int client_fd;
-  bool ready;
+  int topic;
 } chat_t;
 
 typedef struct {
   char *topic;
   int numOfChats;
-  chat_t *chats;
+  int numOfMessages;
+  char *messages[MAX_MESSAGES_PER_TABLES];
 } chat_table_t;
 
 typedef struct {
   chat_t *chat;
+  int client_fd;
   chat_table_t *tables;
 } thread_data_t;
 
@@ -79,15 +80,17 @@ int main(int argc, char *argv[]){
     // Configure the handler to catch SIGINT
     setupHandlers();
 
-	  // Show the IPs assigned to this computer
-	  printLocalIPs();
+    // Show the IPs assigned to this computer
+    printLocalIPs();
 
     initChatTables(tables);
 
     // Start the server
     server_fd = initServer(argv[1], MAX_QUEUE);
-	  // Listen for connections from the clients
+	
+	// Listen for connections from the clients
     waitForConnections(server_fd, tables);
+    
     // Close the socket
     close(server_fd);
 
@@ -129,13 +132,13 @@ void interruptionHandler(int sig){
     Main loop to wait for incomming connections
 */
 void waitForConnections(int server_fd, chat_table_t *_tables){
-    struct sockaddr_in client_address;
-    socklen_t client_address_size;
-    char client_presentation[INET_ADDRSTRLEN];
-    int client_fd;
-    int thread_status;
-    int poll_response;
-	  int timeout = 500; // Time in milliseconds (0.5 seconds)
+  struct sockaddr_in client_address;
+  socklen_t client_address_size;
+  char client_presentation[INET_ADDRSTRLEN];
+  int client_fd;
+  int thread_status;
+  int poll_response;
+	int timeout = 500; // Time in milliseconds (0.5 seconds)
 
     // Get the size of the structure to store client information
     client_address_size = sizeof client_address;
@@ -165,29 +168,31 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
         else{
             // Check the type of event detected
             if (test_fds[0].revents & POLLIN){
-        				// ACCEPT
-        				// Wait for a client connection
-        				client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
-        				if (client_fd == -1){
-        					fatalError("ERROR: accept");
-        				}
+    			// ACCEPT
+    			// Wait for a client connection
+    			client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
+    			if (client_fd == -1){
+    				fatalError("ERROR: accept");
+    			}
+    
+    			// Get the data from the client
+    			inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
+    			printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
 
-        				// Get the data from the client
-        				inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
-        				printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
+          // Prepare the structure to send to the thread
+					thread_data_t thread_data;
+					thread_data.tables = _tables;
+					thread_data.client_fd = client_fd;
 
-                // Prepare the structure to send to the thread
-
-
-        				// Create thread
-                pthread_t client_thread;
-                thread_status = pthread_create(&client_thread, NULL, &attentionThread, NULL);
-                if(thread_status != 0){
-                  perror("ERROR: pthread_create");
-                  exit(EXIT_FAILURE);
-                }
-            }
+					// Create thread
+          pthread_t client_thread;
+          thread_status = pthread_create(&client_thread, NULL, &attentionThread, &thread_data);
+          if(thread_status != 0){
+            perror("ERROR: pthread_create");
+            exit(EXIT_FAILURE);
+          }
         }
+      }
     }
 }
 
@@ -195,16 +200,64 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     Hear the request from the client and send an answer
 */
 void *attentionThread(void *arg){
+	char buffer[BUFFER_SIZE];
+  thread_data_t *data = arg;
+  chat_t chat;
+  data->chat = &chat;
+  int operation;
+  response_t response;
+  int number = -1;
+  
+  if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+    printf("The server got lost while finding the topics\n");
+    exit(EXIT_FAILURE);
+  }
+  
+  sscanf(buffer, "%d %s", &operation, chat.name);
+  
+  while(operation != EXIT){
+  	if(number >= 0){
+  		if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+		    printf("The server got lost while finding the topics\n");
+		    exit(EXIT_FAILURE);
+		  }
+		  sscanf(buffer, "%d %d", &operation, &number);
+  	}
+  	//RECIEVE STRING
+  	switch(operation){
+  		case NAME:
+  			response = OK;
+  			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
+  			sendString(data->client_fd, buffer);
+  			
+  			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
+  			sendString(data->client_fd, buffer);
+  			break;
+  		case TOPIC:
+  			response = KEY;
+  			chat.topic = number;
+  		
+  			sprintf(buffer, "%d 0", response);
+  			break;
+  		case SEND:
+  			break;
+  		case SHOW:
+  			break;
+  		case EXIT:
+  			break;
+  	}
+  	number = 0;
+  }
+  
   pthread_exit(NULL);
 }
 
 void initChatTables(chat_table_t *chat_tables){
   for (size_t i = 0; i < NUM_CHAT_TABLES; i++) {
     chat_tables[i].numOfChats = 0;
-    chat_tables[i].chats = malloc(MAX_CHATS_PER_TABLE * sizeof(chat_t));
+    chat_tables[i].numOfMessages = 0;
     if(i == 0) chat_tables[i].topic = "Math";
     else if(i == 1) chat_tables[i].topic = "Nezfliz";
     else if(i == 2) chat_tables[i].topic = "Chess";
-    else chat_tables[i].topic = "Other";
   }
 }
