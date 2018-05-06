@@ -37,7 +37,7 @@
 #define BUFFER_SIZE 1024
 #define MAX_QUEUE 5
 #define NUM_CHAT_TABLES 3
-#define MAX_MESSAGES_PER_TABLES 10
+#define MAX_MESSAGES_PER_TABLE 10
 
 typedef enum {false, true} bool;
 
@@ -50,7 +50,8 @@ typedef struct {
   char *topic;
   int numOfChats;
   int numOfMessages;
-  char *messages[MAX_MESSAGES_PER_TABLES];
+  char *key;
+  char *messages[MAX_MESSAGES_PER_TABLE];
 } chat_table_t;
 
 typedef struct {
@@ -209,8 +210,8 @@ void *attentionThread(void *arg){
   int number = -1;
   
   if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
-    printf("The server got lost while finding the topics\n");
-    exit(EXIT_FAILURE);
+    printf("Error recv\n");
+    pthread_exit(NULL);
   }
   
   sscanf(buffer, "%d %s", &operation, chat.name);
@@ -218,10 +219,10 @@ void *attentionThread(void *arg){
   while(operation != EXIT){
   	if(number >= 0){
   		if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
-		    printf("The server got lost while finding the topics\n");
-		    exit(EXIT_FAILURE);
-		  }
-		  sscanf(buffer, "%d %d", &operation, &number);
+    	    printf("Error recv\n");
+    	    pthread_exit(NULL);
+    	}
+		sscanf(buffer, "%d %d", &operation, &number);
   	}
   	//RECIEVE STRING
   	switch(operation){
@@ -236,19 +237,69 @@ void *attentionThread(void *arg){
   		case TOPIC:
   			response = KEY;
   			chat.topic = number;
-  		
+  			
   			sprintf(buffer, "%d 0", response);
+  			sendString(data->client_fd, buffer);
+
+  			for (int i = 0; i < NUM_CHAT_TABLES; i++) {
+  			    if(chat.topic == i){
+  			        sprintf(buffer, "%s", data->tables[i].key);
+  			        sendString(data->client_fd, buffer);
+  			        break;
+  			    }
+  			}
   			break;
   		case SEND:
+  		    //char message[BUFFER_SIZE]; 
+  		    if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+        	    printf("Error recv\n");
+        	    pthread_exit(NULL);
+        	}
+        	
+        	//sscanf(buffer, "%s", message); // GET MESSAGE, MAYBE NOT NECESSARY BECAUSE buffer HAS THE MSG
+        	
+        	for (int i = 0; i < NUM_CHAT_TABLES; i++) {
+  			    if(chat.topic == i){
+  			        if(data->tables[i].numOfMessages < MAX_MESSAGES_PER_TABLE){
+  			            data->tables[i].messages[data->tables[i].numOfMessages++] = buffer;
+  			            //data->tables[i].messages[data->tables[i].numOfMessages++] = message;
+  			        } else{
+  			            for (int j = 0; j < MAX_MESSAGES_PER_TABLE; j++) {
+  			                if(j != MAX_MESSAGES_PER_TABLE - 1){
+  			                    data->tables[i].messages[j] = buffer;
+  			                    //data->tables[i].messages[j] = message;
+  			                } else {
+  			                    data->tables[i].messages[j] = data->tables[i].messages[j + 1];
+  			                }
+  			            }
+  			        }
+  			        break;
+  			    }
+  			}
+        	
   			break;
   		case SHOW:
+  		    for (int i = 0; i < NUM_CHAT_TABLES; i++) {
+  		        if(chat.topic == i){
+  		            response = MESSAGES;
+  		            sprintf(buffer, "%d %d", response, data->tables[i].numOfMessages);
+  		            sendString(data->client_fd, buffer);
+  		            for (int j = 0; j < data->tables[i].numOfMessages; j++) {
+  		                //sprintf(buffer, "%s", data->tables[i].messages[j]);
+  		                sendString(data->client_fd, data->tables[i].messages[j]);
+  		            }
+  		            break;
+  		        }
+  		    }
   			break;
   		case EXIT:
+  		    response = BYE;
+  		    sprintf(buffer, "%d 0", response);
+  			sendString(data->client_fd, buffer);
   			break;
   	}
   	number = 0;
   }
-  
   pthread_exit(NULL);
 }
 
@@ -256,8 +307,17 @@ void initChatTables(chat_table_t *chat_tables){
   for (size_t i = 0; i < NUM_CHAT_TABLES; i++) {
     chat_tables[i].numOfChats = 0;
     chat_tables[i].numOfMessages = 0;
-    if(i == 0) chat_tables[i].topic = "Math";
-    else if(i == 1) chat_tables[i].topic = "Nezfliz";
-    else if(i == 2) chat_tables[i].topic = "Chess";
+    if(i == 0){
+        chat_tables[i].topic = "Math";
+        chat_tables[i].key = "encriptionkey1";
+    }
+    else if(i == 1){
+        chat_tables[i].topic = "Nezfliz";
+        chat_tables[i].key = "encriptionkey2";
+    }
+    else if(i == 2){
+        chat_tables[i].topic = "Chess";
+        chat_tables[i].key = "encriptionkey2";
+    }
   }
 }

@@ -74,25 +74,25 @@ void usage(char *program){
 void chatOperations(int connection_fd) {
 	char buffer[BUFFER_SIZE];
 	char name[50];
-	char topics[3][BUFFER_SIZE];
-	char chat_name[50];
-	int chat_room;
+	char *topics[3];
+	int chat_room = 4;
 	char opt;
-	operation_t operation = NAME;
+	int operation = NAME;
 	
 	// Start interaction with user's client
 	printf("Enter your name: ");
 	scanf("%s\n", name);
-	
+	printf("hola");
+
 	sprintf(buffer, "%d %s", operation, name);
 	sendString(connection_fd, buffer);
-	
+
 	// Recieve response of the user creation
 	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
         printf("The server got lost while finding the topics\n");
         exit(EXIT_FAILURE);
     }
-    sscanf(buffer, "%d %d", operation, chat_room);
+    sscanf(buffer, "%d %d", &operation, &chat_room);
 	
 	if(operation == OK) {
 		// Recieve the topics if the name creating was OK
@@ -102,6 +102,15 @@ void chatOperations(int connection_fd) {
 	    }
 	    sscanf(buffer, "%s %s %s", topics[0], topics[1], topics[2]);
 	    // Ask user what topics does he want to join, save in chat_room
+	    printf("-+-+-+-+- Select a topic -+-+-+-+-");
+	    printf("\t 0. %s", topics[0]);
+	    printf("\t 1. %s", topics[1]);
+	    printf("\t 2. %s\n", topics[2]);
+	    scanf(" %d", &chat_room);
+	    if(chat_room < 0 && chat_room > 2) {
+	    	printf("Invalid topic option");
+	    	exit(EXIT_FAILURE);
+	    }
 	} else {
 		printf("Something went wrong creating your user. Try again");
 		exit(EXIT_FAILURE);
@@ -117,7 +126,7 @@ void chatOperations(int connection_fd) {
         exit(EXIT_FAILURE);
     }
     
-    sscanf(buffer, "%d", operation);
+    sscanf(buffer, "%d", &operation);
     if(operation == KEY) {
     	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 	        printf("The server had problems with the ids\n");
