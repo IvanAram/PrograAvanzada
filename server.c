@@ -208,7 +208,6 @@ void *attentionThread(void *arg){
   int operation;
   response_t response;
   int number = -1;
-  
   // Receive clients name
   if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
@@ -230,6 +229,7 @@ void *attentionThread(void *arg){
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
   			sendString(data->client_fd, buffer);
+  			sleep(1);
   			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
   			sendString(data->client_fd, buffer);
   			break;
