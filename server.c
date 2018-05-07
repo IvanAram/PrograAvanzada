@@ -47,7 +47,6 @@ typedef struct {
 } chat_table_t;
 
 typedef struct {
-  chat_t *chat;
   int client_fd;
   chat_table_t *tables;
 } thread_data_t;
@@ -193,65 +192,66 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     Hear the request from the client and send an answer
 */
 void *attentionThread(void *arg){
+  // this array will save string that will send to the client
   char buffer[BUFFER_SIZE];
+  // this will save the information of the connection with a client
   thread_data_t data = *(thread_data_t *)arg;
+  // this will save the information of the chats
   chat_t chat;
-  data.chat = &chat;
+  // this will save the current status of client-server
   int operation;
+  // same as +opertaion+ but server-client
   response_t response;
+  // helper variable that will save information from a request
   int number = -1;
+
   // Receive clients name
-  //printf("RECEIVING NAME...\n");
   if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
     pthread_exit(NULL);
   }
-  //printf("BUFFER: %s\n", buffer);
   sscanf(buffer, "%d %s", &operation, chat.name);
-  //printf("OPERATION: %d\nNAME: %s\n", operation, chat.name);
+
   // Main while
   while(operation != EXIT){
     if(number >= 0){
-      //printf("RECEIVING OPERATION...\n");
       if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
         printf("Error recv\n");
         pthread_exit(NULL);
     	}
-      //printf("BUFFER: %s\n", buffer);
 	    sscanf(buffer, "%d %d", &operation, &number);
       //printf("OPERATION: %d\nNUMBER: %d\n", operation, number);
   	}
-  	//RECIEVE STRING
+  	// RECIEVE DIFFERENT RESPONSE FROM CLIENT
   	switch(operation){
   		case NAME:
+        // When client response with NAME, send amount of chat tables
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
-        //printf("...SENDING RESPONSE\n");
   			sendString(data.client_fd, buffer);
+        // we sleep 1 sec after each send (if theres another send next to it)
+        // so the client has time to recieve each request without breaking
         sleep(1);
   			sprintf(buffer, "%s %s %s", data.tables[0].topic, data.tables[1].topic, data.tables[2].topic);
-        //printf("...SENDING TOPICS\n");
         sendString(data.client_fd, buffer);
   			break;
   		case TOPIC:
+        // When user selects a topic/table, send the key for encryption/decryption
   			response = KEY;
   			chat.topic = number;
 
   			sprintf(buffer, "%d 0", response);
-        //printf("...SENDING RESPONSE\n");
   			sendString(data.client_fd, buffer);
         sleep(1);
         sprintf(buffer, "%s", data.tables[chat.topic].key);
-        //printf("...SENDING KEY\n");
         sendString(data.client_fd, buffer);
   			break;
   		case SEND:
-        //printf("RECEIVING MESSAGE...\n");
+        // When user wants to send a message, append it to the currect table
 		    if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
     	    printf("Error recv\n");
     	    pthread_exit(NULL);
       	}
-        //printf("BUFFER: %s\n", buffer);
 
         if(data.tables[chat.topic].numOfMessages < MAX_MESSAGES_PER_TABLE){
           sscanf(buffer, "%s", data.tables[chat.topic].messages[data.tables[chat.topic].numOfMessages]);
@@ -268,21 +268,21 @@ void *attentionThread(void *arg){
 
   			break;
   		case SHOW:
+        // User wants to see all the messages of an the selected chat_room
         response = MESSAGES;
         sprintf(buffer, "%d %d", response, data.tables[chat.topic].numOfMessages);
-        //printf("...SENDING RESPONSE\n");
         sendString(data.client_fd, buffer);
+        // We send each message with its own request
         for (int j = 0; j < data.tables[chat.topic].numOfMessages; j++) {
           sleep(1);
-          //printf("...SENDING MESSAGE\n");
           sendString(data.client_fd, data.tables[chat.topic].messages[j]);
         }
   			break;
   		case EXIT:
+        // Client will disconnect
         printf("Client left\n");
 		    response = BYE;
 		    sprintf(buffer, "%d 0", response);
-        //printf("...SENDING RESPONSE\n");
   			sendString(data.client_fd, buffer);
   			break;
   	}
@@ -301,6 +301,7 @@ void initChatTables(chat_table_t *chat_tables){
     chat_tables[i].numOfMessages = 0;
     if(i == 0){
         chat_tables[i].topic = "Math";
+        // we use this key to encrypt/decrypt messages
         chat_tables[i].key = "bitches";
     }
     else if(i == 1){
