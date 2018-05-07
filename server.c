@@ -194,15 +194,15 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
 */
 void *attentionThread(void *arg){
   char buffer[BUFFER_SIZE];
-  thread_data_t *data = arg;
+  thread_data_t data = *(thread_data_t *)arg;
   chat_t chat;
-  data->chat = &chat;
+  data.chat = &chat;
   int operation;
   response_t response;
   int number = -1;
   // Receive clients name
   //printf("RECEIVING NAME...\n");
-  if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+  if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
     pthread_exit(NULL);
   }
@@ -213,7 +213,7 @@ void *attentionThread(void *arg){
   while(operation != EXIT){
     if(number >= 0){
       //printf("RECEIVING OPERATION...\n");
-      if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+      if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
         printf("Error recv\n");
         pthread_exit(NULL);
     	}
@@ -227,11 +227,11 @@ void *attentionThread(void *arg){
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
         //printf("...SENDING RESPONSE\n");
-  			sendString(data->client_fd, buffer);
+  			sendString(data.client_fd, buffer);
         sleep(1);
-  			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
+  			sprintf(buffer, "%s %s %s", data.tables[0].topic, data.tables[1].topic, data.tables[2].topic);
         //printf("...SENDING TOPICS\n");
-        sendString(data->client_fd, buffer);
+        sendString(data.client_fd, buffer);
   			break;
   		case TOPIC:
   			response = KEY;
@@ -239,29 +239,29 @@ void *attentionThread(void *arg){
 
   			sprintf(buffer, "%d 0", response);
         //printf("...SENDING RESPONSE\n");
-  			sendString(data->client_fd, buffer);
+  			sendString(data.client_fd, buffer);
         sleep(1);
-        sprintf(buffer, "%s", data->tables[chat.topic].key);
+        sprintf(buffer, "%s", data.tables[chat.topic].key);
         //printf("...SENDING KEY\n");
-        sendString(data->client_fd, buffer);
+        sendString(data.client_fd, buffer);
   			break;
   		case SEND:
         //printf("RECEIVING MESSAGE...\n");
-		    if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+		    if ( !recvString(data.client_fd, buffer, BUFFER_SIZE) ) {
     	    printf("Error recv\n");
     	    pthread_exit(NULL);
       	}
         //printf("BUFFER: %s\n", buffer);
 
-        if(data->tables[chat.topic].numOfMessages < MAX_MESSAGES_PER_TABLE){
-          sscanf(buffer, "%s", data->tables[chat.topic].messages[data->tables[chat.topic].numOfMessages]);
-          data->tables[chat.topic].numOfMessages += 1;
+        if(data.tables[chat.topic].numOfMessages < MAX_MESSAGES_PER_TABLE){
+          sscanf(buffer, "%s", data.tables[chat.topic].messages[data.tables[chat.topic].numOfMessages]);
+          data.tables[chat.topic].numOfMessages += 1;
         } else{
           for (int j = 0; j < MAX_MESSAGES_PER_TABLE; j++) {
             if(j == MAX_MESSAGES_PER_TABLE - 1){
-              sscanf(buffer, "%s", data->tables[chat.topic].messages[j]);
+              sscanf(buffer, "%s", data.tables[chat.topic].messages[j]);
             } else {
-              strcpy(data->tables[chat.topic].messages[j], data->tables[chat.topic].messages[j + 1]);
+              strcpy(data.tables[chat.topic].messages[j], data.tables[chat.topic].messages[j + 1]);
             }
           }
         }
@@ -269,13 +269,13 @@ void *attentionThread(void *arg){
   			break;
   		case SHOW:
         response = MESSAGES;
-        sprintf(buffer, "%d %d", response, data->tables[chat.topic].numOfMessages);
+        sprintf(buffer, "%d %d", response, data.tables[chat.topic].numOfMessages);
         //printf("...SENDING RESPONSE\n");
-        sendString(data->client_fd, buffer);
-        for (int j = 0; j < data->tables[chat.topic].numOfMessages; j++) {
+        sendString(data.client_fd, buffer);
+        for (int j = 0; j < data.tables[chat.topic].numOfMessages; j++) {
           sleep(1);
           //printf("...SENDING MESSAGE\n");
-          sendString(data->client_fd, data->tables[chat.topic].messages[j]);
+          sendString(data.client_fd, data.tables[chat.topic].messages[j]);
         }
   			break;
   		case EXIT:
@@ -283,7 +283,7 @@ void *attentionThread(void *arg){
 		    response = BYE;
 		    sprintf(buffer, "%d 0", response);
         //printf("...SENDING RESPONSE\n");
-  			sendString(data->client_fd, buffer);
+  			sendString(data.client_fd, buffer);
   			break;
   	}
   	number = 0;
