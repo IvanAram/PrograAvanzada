@@ -6,7 +6,7 @@
 //  Copyright © 2018 Sebastián Galguera. All rights reserved.
 //
 
-// SYMMETRIC ALGORITHM BLOWFISH
+// SYMMETRIC ALGORITHM BLOWFISH BASED ON IMPLEMENTATIONS
 // BLOCK CIPHER / FIXED BLOCKS / MESSAGES NOT MULTIPLE OF 8 BYTES MUST BE PADDED
 
 // DEFINITION OF HEADERS
@@ -15,8 +15,12 @@
 
 // SYSTEM LIBRARIES
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define N 16
+#define BUFFERSIZE 2048
+#define BUFFERSIZE2 1024
 
 // ENUM FOR MODE
 enum EncryptOrDecrypt { ENCRYPT, DECRYPT };
@@ -32,6 +36,7 @@ typedef struct {
 } BLOWFISH_CTX;
 
 // INITIALIZED WITH CONSTANTS HEXADECIMAL DIGITS OF PI
+// TAKEN FROM PAUL KOCHER IMPLEMENTATION
 static const unsigned long P_ARRAY[16 + 2] = {
     0x243F6A88L, 0x85A308D3L, 0x13198A2EL, 0x03707344L,
     0xA4093822L, 0x299F31D0L, 0x082EFA98L, 0xEC4E6C89L,
@@ -41,6 +46,7 @@ static const unsigned long P_ARRAY[16 + 2] = {
 };
 
 // INITIALIZED WITH CONSTANTS HEXADECIMAL DIGITS OF PI
+// TAKEN FROM PAUL KOCHER IMPLEMENTATION
 static const unsigned long S_ARRAY[4][256] = {
     {   0xD1310BA6L, 0x98DFB5ACL, 0x2FFD72DBL, 0xD01ADFB7L,
         0xB8E1AFEDL, 0x6A267E96L, 0xBA7C9045L, 0xF12C7F99L,
@@ -300,15 +306,26 @@ static const unsigned long S_ARRAY[4][256] = {
         0xB74E6132L, 0xCE77E25BL, 0x578FDFE3L, 0x3AC372E6L  }
 };
 
-void swapLU(unsigned long *, unsigned long *);
+// UTILITIES FUNCTION
+void swapLU(unsigned long * arg1, unsigned long * arg2);
+
+// FUNCTION TO GET THE SIZE OF THE SERIAL MESSAGE
+int getSerialSize(char * text);
+
 
 // TRANSFORMATION FUNCTION
-static unsigned long F(BLOWFISH_CTX *ctx, unsigned long arg);
+unsigned long blowfish_Transform(BLOWFISH_CTX *ctx, unsigned long arg);
 
 // FUNCTION TO INITIALIZE BLOWFISH ALGORITHM
 void blowfish_Init(BLOWFISH_CTX *ctx, unsigned char *key, int keyLen);
 
 // FUNCTION TO ENCRYPT WITH THE BLOWFISH ALGORITHM 0 FOR ENCRYPTION 1 FOR DECRYPTION
 void blowfish_Crypt(BLOWFISH_CTX *ctx, unsigned long *left, unsigned long *right, int mode);
+
+// IMPLEMENTATION OF AN ENCRYPTION PROVIDED A KEY
+char * blowfish_Encrypt(char * text, char * key);
+
+// FUNCTION TO DECRYPT WITH A ENCRYPTED GIVEN STRING AND KEY
+char * blowfish_Decrypt(char * text, char * key);
 
 #endif /* blowfish_h */

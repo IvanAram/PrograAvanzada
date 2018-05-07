@@ -1,6 +1,6 @@
 /*
     Program for a chat client
-    It uses sockets, threads (paralelism), signals and __moreinfohere__
+    It uses sockets, threads, signals, a communication protocol and encription
 
     Ivan Aram Gonzalez Su - A01022584
     Jose Manuel Beauregard Mendez - A01021716
@@ -159,12 +159,12 @@ void chatOperations(int connection_fd) {
 				// Ask user for message
 				printf("Enter message:\n");
 				fgets(message, BUFFER_SIZE, stdin);
-				sprintf(buffer, "%s:%s", name, message);
-
-				// ENCRYPT MESSAGE
-
+				sprintf(buffer, "%s: %s", name, message);
+				// Encrypt buffer using blowfish algorithm
+				char *_buffer = blowfish_Encrypt(buffer, KEY_VAL);
 				// Send encrypted text to server
-				sendString(connection_fd, buffer);
+				sendString(connection_fd, _buffer);
+				free(_buffer);
 				break;
 			case 'r':
 				// The user wants to see all the messages, we notify the server
@@ -174,7 +174,7 @@ void chatOperations(int connection_fd) {
 
 				// We'll recieve the number of messages that the server will send
 				if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
-					printf("The server had problems with the ids\n");
+					printf("The server disconnected\n");
 					exit(EXIT_FAILURE);
 				}
 				sscanf(buffer, "%d %d", &response, &numOfMessages);
@@ -182,14 +182,14 @@ void chatOperations(int connection_fd) {
 				// We start listening for the messages sent by the server
 				for (size_t i = 0; i < numOfMessages; i++) {
 					if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
-						printf("The server had problems with the ids\n");
+						printf("The server disconnected\n");
 						exit(EXIT_FAILURE);
 					}
-
-					// BUFFER IS MESSAGE (ENCRIPTED) DECRYPT BUFFER
-
-					// This will print the message like +name+:+message+
-					printf("\t%s\n", buffer);
+					// Decrypt buffer using blowfish algorithm
+					char *_buffer = blowfish_Decrypt(buffer, KEY_VAL);
+					// This will print the message like +name+: +message+
+					printf("\t%s\n", _buffer);
+					free(_buffer);
 				}
 				break;
 			case 'e':

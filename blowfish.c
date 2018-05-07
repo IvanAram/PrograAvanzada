@@ -1,15 +1,121 @@
 // CUSTOM HEADER
 #include "blowfish.h"
 
+// UTILITIES FUNCTION
 void swapLU(unsigned long * arg1, unsigned long * arg2){
-	unsigned long aux;
-	aux = *arg1;
-  *arg1 = *arg2;
-  *arg2 = aux;
+    unsigned long aux;
+    aux = *arg1;
+    *arg1 = *arg2;
+    *arg2 = aux;
+}
+
+// FUNCTION TO GET THE SIZE OF THE SERIAL MESSAGE
+int getSerialSize(char * text){
+    int count = 0;
+    for(int i = 0; i< strlen(text); i++){
+        // CHECK FOR SEPARATORS THAT MARK EACH SEGMENT
+        if(text[i] == '|'){
+            count++;
+        }
+    }
+    return count;
+
+}
+
+// IMPLEMENTATION OF AN ENCRYPTION PROVIDED A KEY
+char * blowfish_Encrypt(char * text, char * key){
+
+    // FUNCTION VARIABLES
+    char buffer[BUFFERSIZE];
+    int idx = 0;
+    int len = strlen(text);
+
+    // CREATE A NEW TEXT
+    char * new_text;
+    new_text = malloc(sizeof(char) * BUFFERSIZE);
+
+    // ARRAY FOR BLOWFISH IMPLEMENTATION
+    unsigned long enc[len];
+
+    // DECLARE BLOWFISH
+    BLOWFISH_CTX ctx;
+    // CALL INIT
+    blowfish_Init(&ctx, (unsigned char*)key, strlen(key));
+
+    for(int i = 0; i < len; i+=2){
+        // TWO AT A TIME FOR LEFT / RIGHT
+        enc[i] = text[i];
+        enc[i+1] = text[i+1];
+
+        //  ENCRYPT, PASS THE CONTEXT AND 2 ELEMENTS OF ENCODED MESSAGE ARRAY
+        blowfish_Crypt(&ctx, &enc[i], &enc[i+1], ENCRYPT);
+    }
+
+    // PARSE THE STRING TO UNSIGNED LONG
+    for(int i = 0; i < len; i++){
+        sprintf(buffer,"%lu|", enc[i]);
+        for (int j = 0; j < strlen(buffer); j++){
+            new_text[idx++] = buffer[j];
+        }
+    }
+    // APPEND A TERMINATING CHARACTER
+    new_text[idx] = '\0';
+    return new_text;
+
+}
+
+// FUNCTION TO DECRYPT WITH A ENCRYPTED GIVEN STRING AND KEY
+char * blowfish_Decrypt(char * text, char * key){
+
+    // FUNCTION VARIABLES
+    char encoded_text[BUFFERSIZE2];
+    int len = getSerialSize(text);
+    int k = 0;
+    int l = 0;
+
+    // CREATE A NEW TEXT
+    char * new_text;
+    new_text = malloc(sizeof(char) * BUFFERSIZE);
+
+    // ARRAY FOR BLOWFISH IMPLEMENTATION
+    unsigned long enc[len];
+
+    // PARSE THE SERIAL STRING WHILE CHECKING FOR PIPES
+    for(int j = 0; j < strlen(text); j++){
+        if(text[j] == '|'){ // IF THERE'S A PIPE APPEND THE SEGMENT
+            char *eptr;
+            enc[k] = strtol(encoded_text, &eptr, 10);
+            bzero(&encoded_text, BUFFERSIZE2);
+            k++;
+            l = 0;
+        }else{
+            // IF NOT APPEND TO SEGMENT
+            encoded_text[l] = text[j];
+            l++;
+        }
+    }
+
+    // DECLARE BLOWFISH
+    BLOWFISH_CTX ctx;
+    // CALL INIT
+    blowfish_Init(&ctx, (unsigned char*)key, strlen(key));
+
+    for(int i = 0; i < len; i+=2){
+        // DECRYPTION TO PLAINTEXT
+        blowfish_Crypt(&ctx, &enc[i], &enc[i+1], DECRYPT);
+        new_text[i] = enc[i];
+        new_text[i+1] = enc[i+1];
+    }
+
+    // APPEND TO LINE
+    new_text[len] = '\0';
+    // DECRYPTED MESSAGE
+    return new_text;
+
 }
 
 // TRANSFORM FUNCTION UPON THE CONTEXT
-static unsigned long F(BLOWFISH_CTX *ctx, unsigned long arg) {
+unsigned long blowfish_Transform(BLOWFISH_CTX *ctx, unsigned long arg) {
     unsigned short first, second, third, fourth;
     unsigned long transformed;
 
@@ -53,6 +159,7 @@ void blowfish_Init(BLOWFISH_CTX *ctx, unsigned char *key, int keyLen) {
         }
     }
 
+    // FEED THE STRUCT WITH THE S_ARRAY
     for (int i = 0; i < 4; i++) {
         for (j = 0; j < 256; j++)
             ctx->S[i][j] = S_ARRAY[i][j];
@@ -60,6 +167,7 @@ void blowfish_Init(BLOWFISH_CTX *ctx, unsigned char *key, int keyLen) {
 
     j = 0;
 
+    // FEED THE STRUCT WITH THE P_ARRAY
     for (int i = 0; i < N + 2; ++i) {
         data = 0x00000000;
         for (int k = 0; k < 4; ++k) {
@@ -89,7 +197,7 @@ void blowfish_Crypt(BLOWFISH_CTX *ctx, unsigned long *left, unsigned long *right
     if(mode == ENCRYPT){
         for (short i = 0; i < N; ++i) {
             xOrLeft = xOrLeft ^ ctx->P[i];
-            xOrRight = F(ctx, xOrLeft) ^ xOrRight;
+            xOrRight = blowfish_Transform(ctx, xOrLeft) ^ xOrRight;
 
             // SWAPPING XORLEFT AND RIGHT
             swapLU(&xOrLeft, &xOrRight);
@@ -98,7 +206,7 @@ void blowfish_Crypt(BLOWFISH_CTX *ctx, unsigned long *left, unsigned long *right
     }else if(mode == DECRYPT){
         for (short i = N + 1; i > 1; --i) {
             xOrLeft = xOrLeft ^ ctx->P[i];
-            xOrRight = F(ctx, xOrLeft) ^ xOrRight;
+            xOrRight = blowfish_Transform(ctx, xOrLeft) ^ xOrRight;
 
             // SWAPPING XORLEFT AND RIGHT
             swapLU(&xOrLeft, &xOrRight);
@@ -122,6 +230,8 @@ void blowfish_Crypt(BLOWFISH_CTX *ctx, unsigned long *left, unsigned long *right
     *right = xOrRight;
 
 }
+
+
 
 // FUNCTION TO TEST ENCRYPTION AND DECRYPTION
 int blowfish_Test(BLOWFISH_CTX *ctx) {

@@ -1,6 +1,6 @@
 /*
     Program for a chat server
-    It uses sockets, threads (paralelism), signals and __moreinfohere__
+    It uses sockets, threads, signals, a communication protocol and encription
 
     Ivan Aram Gonzalez Su - A01022584
     Jose Manuel Beauregard Mendez - A01021716
@@ -117,7 +117,8 @@ void setupHandlers(){
     Function to handle Ctrl-C (interruption)
 */
 void interruptionHandler(int sig){
-  printf("INTERRUPTED\n");
+  printf("\nServer interrupted\n");
+  exit(EXIT_SUCCESS);
 }
 
 /*
@@ -132,60 +133,60 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
   int poll_response;
 	int timeout = 500; // Time in milliseconds (0.5 seconds)
 
-    // Get the size of the structure to store client information
-    client_address_size = sizeof client_address;
+  // Get the size of the structure to store client information
+  client_address_size = sizeof client_address;
 
-    while (1){
-		//// POLL
-        // Create a structure array to hold the file descriptors to poll
-        struct pollfd test_fds[1];
-        // Fill in the structure
-        test_fds[0].fd = server_fd;
-        test_fds[0].events = POLLIN;    // Check for incomming data
-        // Check if there is any incomming communication
-        poll_response = poll(test_fds, 1, timeout);
+  while (1){
+    //// POLL
+    // Create a structure array to hold the file descriptors to poll
+    struct pollfd test_fds[1];
+    // Fill in the structure
+    test_fds[0].fd = server_fd;
+    test_fds[0].events = POLLIN;    // Check for incomming data
+    // Check if there is any incomming communication
+    poll_response = poll(test_fds, 1, timeout);
 
-		    // Error when polling
-        if (poll_response == -1){
-            // Test if the error was caused by an interruption
-            if (errno == EINTR){
-              // INTERRUPTION
-              //printf("Poll did not finish. The program was interrupted");
-            }
-            else{
-                fatalError("ERROR: poll");
-            }
+    // Error when polling
+    if (poll_response == -1){
+        // Test if the error was caused by an interruption
+        if (errno == EINTR){
+          // INTERRUPTION
+          //printf("Poll did not finish. The program was interrupted");
         }
-		    // There is something ready at the socket
         else{
-            // Check the type of event detected
-            if (test_fds[0].revents & POLLIN){
-    			// ACCEPT
-    			// Wait for a client connection
-    			client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
-    			if (client_fd == -1){
-    				fatalError("ERROR: accept");
-    			}
+            fatalError("ERROR: poll");
+        }
+    }
+    // There is something ready at the socket
+    else{
+      // Check the type of event detected
+      if (test_fds[0].revents & POLLIN){
+  			// ACCEPT
+  			// Wait for a client connection
+  			client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
+  			if (client_fd == -1){
+  				fatalError("ERROR: accept");
+  			}
 
-    			// Get the data from the client
-    			inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
-    			printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
+  			// Get the data from the client
+  			inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
+  			printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
 
-          // Prepare the structure to send to the thread
-					thread_data_t thread_data;
-					thread_data.tables = _tables;
-					thread_data.client_fd = client_fd;
+        // Prepare the structure to send to the thread
+  			thread_data_t thread_data;
+  			thread_data.tables = _tables;
+  			thread_data.client_fd = client_fd;
 
-					// Create thread
-          pthread_t client_thread;
-          thread_status = pthread_create(&client_thread, NULL, &attentionThread, &thread_data);
-          if(thread_status != 0){
-            perror("ERROR: pthread_create");
-            exit(EXIT_FAILURE);
-          }
+  			// Create thread
+        pthread_t client_thread;
+        thread_status = pthread_create(&client_thread, NULL, &attentionThread, &thread_data);
+        if(thread_status != 0){
+          perror("ERROR: pthread_create");
+          exit(EXIT_FAILURE);
         }
       }
     }
+  }
 }
 
 /*
