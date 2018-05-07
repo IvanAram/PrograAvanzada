@@ -14,6 +14,9 @@
 // Sockets libraries
 #include <netdb.h>
 #include <arpa/inet.h>
+// Signals library
+#include <errno.h>
+#include <signal.h>
 // Custom libraries
 #include "sockets.h"
 #include "fatal_error.h"
@@ -26,16 +29,21 @@
 
 ///// FUNCTION DECLARATIONS
 void usage(char *);
+void setupHandlers();
+void interruptionHandler(int);
 void chatOperations(int);
+
+int connection_fd;
 
 ///// MAIN FUNCTION
 int main(int argc, char *argv[]){
-	int connection_fd;
 
 	// Check the correct arguments
 	if (argc != 3){
 		usage(argv[0]);
 	}
+
+	setupHandlers();
 
 	// Start the server connection
 	connection_fd = connectSocket(argv[1], argv[2]);
@@ -58,6 +66,31 @@ void usage(char *program){
 	printf("Usage:\n");
 	printf("\t%s {server_address} {port_number}\n", program);
 	exit(EXIT_FAILURE);
+}
+
+/*
+    Modify the signal handlers for specific events
+*/
+void setupHandlers(){
+    struct sigaction new_action;
+
+    // Handle Ctrl-c
+    new_action.sa_handler = interruptionHandler;
+    new_action.sa_flags = SA_RESETHAND;
+
+    // Apply the handler
+    sigaction(SIGINT, &new_action, (struct sigaction *)NULL);
+}
+
+/*
+    Function to handle Ctrl-C (interruption)
+*/
+void interruptionHandler(int signal) {
+	char lastBuffer[5];
+	sprintf(lastBuffer, "%d 0", EXIT);
+	sendString(connection_fd, lastBuffer);
+	printf("\nThanks for using our chat tables!\n");
+	exit(EXIT_SUCCESS);
 }
 
 /*
@@ -178,7 +211,7 @@ void chatOperations(int connection_fd) {
 					exit(EXIT_FAILURE);
 				}
 				sscanf(buffer, "%d %d", &response, &numOfMessages);
-
+				printf("\n");
 				// We start listening for the messages sent by the server
 				for (size_t i = 0; i < numOfMessages; i++) {
 					if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
