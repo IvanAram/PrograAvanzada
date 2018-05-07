@@ -79,30 +79,30 @@ void chatOperations(int connection_fd) {
 	printf("Enter your display name: ");
 	scanf("%s", name);
 	sprintf(buffer, "%d %s", operation, name);
-	printf("...SENDING NAME\n");
+	//printf("...SENDING NAME\n");
 	sendString(connection_fd, buffer);
 
 	// Recieve response of the user creation
-	printf("RECEIVING SERVER RESPONSE...\n");
+	//printf("RECEIVING SERVER RESPONSE...\n");
 	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
     printf("The server got lost while finding the topics\n");
     exit(EXIT_FAILURE);
   }
-	printf("BUFFER: %s\n", buffer);
+	//printf("BUFFER: %s\n", buffer);
   sscanf(buffer, "%d %d", &response, &chat_room);
-	printf("RESPONSE: %d\nTOPICS: %d\n", response, chat_room);
+	//printf("RESPONSE: %d\nTOPICS: %d\n", response, chat_room);
 	if(response == OK) {
 	// Recieve the topics if the name creating was OK
-		printf("RECEIVING TOPICS...\n");
+		//printf("RECEIVING TOPICS...\n");
 		if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 	    printf("The server got lost while finding the topics\n");
 	    exit(EXIT_FAILURE);
 	  }
-		printf("BUFFER: %s\n", buffer);
+		//printf("BUFFER: %s\n", buffer);
 	  sscanf(buffer, "%s %s %s", topics[0], topics[1], topics[2]);
-		printf("TOPICS: %s %s %s\n", topics[0], topics[1], topics[2]);
+		//printf("TOPICS: %s %s %s\n", topics[0], topics[1], topics[2]);
 	  // Ask user what topics does he want to join, save in chat_room
-	  printf("-+-+-+-+- Select a topic -+-+-+-+-\n");
+	  printf("\n-+-+-+-+- Select a topic -+-+-+-+-\n");
 	  printf("\t 0. %s\n", topics[0]);
 	  printf("\t 1. %s\n", topics[1]);
 	  printf("\t 2. %s\n", topics[2]);
@@ -115,33 +115,33 @@ void chatOperations(int connection_fd) {
 	}
 	operation = TOPIC;
 	sprintf(buffer, "%d %d", operation, chat_room);
-	printf("...SENDING OPERATION\n");
+	//printf("...SENDING OPERATION\n");
 	sendString(connection_fd, buffer);
 
-	printf("RECEIVING RESPONSE...\n");
+	//printf("RECEIVING RESPONSE...\n");
 	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
     printf("The server had problems connecting you with the room\n");
     exit(EXIT_FAILURE);
 	}
-	printf("BUFFER: %s\n", buffer);
+	//printf("BUFFER: %s\n", buffer);
 	sscanf(buffer, "%d", &response);
-	printf("RESPONSE: %d\n", response);
+	//printf("RESPONSE: %d\n", response);
 	if(response == KEY) {
-		printf("RECEIVING KEY...\n");
+		//printf("RECEIVING KEY...\n");
 		if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
       printf("The server had problems with the ids\n");
       exit(EXIT_FAILURE);
 	  }
-		printf("BUFFER: %s\n", buffer);
+		//printf("BUFFER: %s\n", buffer);
 	  sscanf(buffer, "%s", KEY_VAL);
-		printf("KEY: %s\n", KEY_VAL);
+		//printf("KEY: %s\n", KEY_VAL);
 	} else {
 		printf("An error happend with the key\n");
 		exit(EXIT_FAILURE);
 	}
 
 	while(opt != 'e'){
-		printf("-*-*-* ChatRoom Menu -*-*-*\n");
+		printf("\n-+-+-+-+- ChatRoom Menu -+-+-+-+-\n");
 		printf("\tw. Write Message\n");
 		printf("\tr. Refresh\n");
 		printf("\te. Exit\n");
@@ -152,57 +152,61 @@ void chatOperations(int connection_fd) {
 			case 'w':
 				operation = SEND;
 				sprintf(buffer, "%d 0", operation);
-				printf("...SENDING OPERATION\n");
+				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
 
 				printf("Enter message:\n");
 				fgets(message, BUFFER_SIZE, stdin);
+
+				sprintf(buffer, "%s:%s", name, message);
 
 				//scanf("%s", message);
 				//getchar();
 
 				// ENCRYPT MESSAGE
 
-				printf("...SENDING MESSAGE\n");
-				sendString(connection_fd, message);
+				//printf("...SENDING MESSAGE\n");
+				sendString(connection_fd, buffer);
 				break;
 			case 'r':
 				operation = SHOW;
 				sprintf(buffer, "%d 0", operation);
-				printf("...SENDING OPERATION\n");
+				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
 
-				printf("RECEIVING RESPONSE...\n");
+				//printf("RECEIVING RESPONSE...\n");
 				if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 					printf("The server had problems with the ids\n");
 					exit(EXIT_FAILURE);
 				}
-				printf("BUFFER: %s\n", buffer);
+				//printf("BUFFER: %s\n", buffer);
 				sscanf(buffer, "%d %d", &response, &numOfMessages);
-				printf("RESPONSE: %d\nMESSAGES: %d\n", response, numOfMessages);
+				//printf("RESPONSE: %d\nMESSAGES: %d\n", response, numOfMessages);
 
 				for (size_t i = 0; i < numOfMessages; i++) {
-					printf("RECEIVING MESSAGE...\n");
+					//printf("RECEIVING MESSAGE...\n");
 					if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 						printf("The server had problems with the ids\n");
 						exit(EXIT_FAILURE);
 					}
-					printf("BUFFER: %s\n", buffer);
+					//printf("BUFFER: %s\n", buffer);
 					// BUFFER IS MESSAGE (ENCRIPTED) DECRYPT MSG
+
+					printf("\t%s\n", buffer);
 				}
 				break;
 			case 'e':
 				operation = EXIT;
 				sprintf(buffer, "%d 0", operation);
-				printf("...SENDING OPERATION\n");
+				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
 
-				printf("RECEIVING RESPONSE...\n");
+				//printf("RECEIVING RESPONSE...\n");
 				if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 		      printf("The server had problems with the ids\n");
 		      exit(EXIT_FAILURE);
 			  }
-				printf("BUFFER: %s\n", buffer);
+				//printf("BUFFER: %s\n", buffer);
 				sscanf(buffer, "%d", &response);
 				break;
 			default:

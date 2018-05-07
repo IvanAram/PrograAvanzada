@@ -118,7 +118,7 @@ void setupHandlers(){
     Function to handle Ctrl-C (interruption)
 */
 void interruptionHandler(int sig){
-
+  printf("INTERRUPTED\n");
 }
 
 /*
@@ -201,36 +201,36 @@ void *attentionThread(void *arg){
   response_t response;
   int number = -1;
   // Receive clients name
-  printf("RECEIVING NAME...\n");
+  //printf("RECEIVING NAME...\n");
   if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
     pthread_exit(NULL);
   }
-  printf("BUFFER: %s\n", buffer);
+  //printf("BUFFER: %s\n", buffer);
   sscanf(buffer, "%d %s", &operation, chat.name);
-  printf("OPERATION: %d\nNAME: %s\n", operation, chat.name);
+  //printf("OPERATION: %d\nNAME: %s\n", operation, chat.name);
   // Main while
   while(operation != EXIT){
     if(number >= 0){
-      printf("RECEIVING OPERATION...\n");
+      //printf("RECEIVING OPERATION...\n");
       if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
         printf("Error recv\n");
         pthread_exit(NULL);
     	}
-      printf("BUFFER: %s\n", buffer);
+      //printf("BUFFER: %s\n", buffer);
 	    sscanf(buffer, "%d %d", &operation, &number);
-      printf("OPERATION: %d\nNUMBER: %d\n", operation, number);
+      //printf("OPERATION: %d\nNUMBER: %d\n", operation, number);
   	}
   	//RECIEVE STRING
   	switch(operation){
   		case NAME:
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
-        printf("...SENDING RESPONSE\n");
+        //printf("...SENDING RESPONSE\n");
   			sendString(data->client_fd, buffer);
         sleep(1);
   			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
-        printf("...SENDING TOPICS\n");
+        //printf("...SENDING TOPICS\n");
         sendString(data->client_fd, buffer);
   			break;
   		case TOPIC:
@@ -238,20 +238,20 @@ void *attentionThread(void *arg){
   			chat.topic = number;
 
   			sprintf(buffer, "%d 0", response);
-        printf("...SENDING RESPONSE\n");
+        //printf("...SENDING RESPONSE\n");
   			sendString(data->client_fd, buffer);
         sleep(1);
         sprintf(buffer, "%s", data->tables[chat.topic].key);
-        printf("...SENDING KEY\n");
+        //printf("...SENDING KEY\n");
         sendString(data->client_fd, buffer);
   			break;
   		case SEND:
-        printf("RECEIVING MESSAGE...\n");
+        //printf("RECEIVING MESSAGE...\n");
 		    if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
     	    printf("Error recv\n");
     	    pthread_exit(NULL);
       	}
-        printf("BUFFER: %s\n", buffer);
+        //printf("BUFFER: %s\n", buffer);
 
         if(data->tables[chat.topic].numOfMessages < MAX_MESSAGES_PER_TABLE){
           sscanf(buffer, "%s", data->tables[chat.topic].messages[data->tables[chat.topic].numOfMessages]);
@@ -270,11 +270,11 @@ void *attentionThread(void *arg){
   		case SHOW:
         response = MESSAGES;
         sprintf(buffer, "%d %d", response, data->tables[chat.topic].numOfMessages);
-        printf("...SENDING RESPONSE\n");
+        //printf("...SENDING RESPONSE\n");
         sendString(data->client_fd, buffer);
         for (int j = 0; j < data->tables[chat.topic].numOfMessages; j++) {
           sleep(1);
-          printf("...SENDING MESSAGE\n");
+          //printf("...SENDING MESSAGE\n");
           sendString(data->client_fd, data->tables[chat.topic].messages[j]);
         }
   			break;
@@ -282,7 +282,7 @@ void *attentionThread(void *arg){
         printf("Client left\n");
 		    response = BYE;
 		    sprintf(buffer, "%d 0", response);
-        printf("...SENDING RESPONSE\n");
+        //printf("...SENDING RESPONSE\n");
   			sendString(data->client_fd, buffer);
   			break;
   	}
