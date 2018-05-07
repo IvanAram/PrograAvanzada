@@ -7,15 +7,6 @@
     Sebastian Galguera Ortega - A01016708
 */
 
-/*
-    Program for a simple bank server
-    It uses sockets and threads
-    The server will process simple transactions on a limited number of accounts
-
-    Ivan Aram Gonzalez Su
-    A01022584
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,15 +25,16 @@
 #include "fatal_error.h"
 #include "codes.h"
 
-#define BUFFER_SIZE 1024
+///// CONSTANTS DECLARATIONS
 #define MAX_QUEUE 5
+#define BUFFER_SIZE 2048
 #define NUM_CHAT_TABLES 3
 #define MAX_MESSAGES_PER_TABLE 10
 
 typedef enum {false, true} bool;
 
 typedef struct {
-  char *name;
+  char name[50];
   int topic;
 } chat_t;
 
@@ -51,7 +43,7 @@ typedef struct {
   int numOfChats;
   int numOfMessages;
   char *key;
-  char *messages[MAX_MESSAGES_PER_TABLE];
+  char messages[MAX_MESSAGES_PER_TABLE][BUFFER_SIZE];
 } chat_table_t;
 
 typedef struct {
@@ -88,10 +80,10 @@ int main(int argc, char *argv[]){
 
     // Start the server
     server_fd = initServer(argv[1], MAX_QUEUE);
-	
+
 	// Listen for connections from the clients
     waitForConnections(server_fd, tables);
-    
+
     // Close the socket
     close(server_fd);
 
@@ -175,11 +167,11 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     			if (client_fd == -1){
     				fatalError("ERROR: accept");
     			}
-    
+
     			// Get the data from the client
     			inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
     			printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
-                
+
           // Prepare the structure to send to the thread
 					thread_data_t thread_data;
 					thread_data.tables = _tables;
@@ -201,7 +193,7 @@ void waitForConnections(int server_fd, chat_table_t *_tables){
     Hear the request from the client and send an answer
 */
 void *attentionThread(void *arg){
-	char buffer[BUFFER_SIZE];
+  char buffer[BUFFER_SIZE];
   thread_data_t *data = arg;
   chat_t chat;
   data->chat = &chat;
@@ -209,96 +201,94 @@ void *attentionThread(void *arg){
   response_t response;
   int number = -1;
   // Receive clients name
+  printf("RECEIVING NAME...\n");
   if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
     printf("Error recv\n");
     pthread_exit(NULL);
   }
+  printf("BUFFER: %s\n", buffer);
   sscanf(buffer, "%d %s", &operation, chat.name);
-  // Main while 
+  printf("OPERATION: %d\nNAME: %s\n", operation, chat.name);
+  // Main while
   while(operation != EXIT){
-  	if(number >= 0){
-  		if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
-    	    printf("Error recv\n");
-    	    pthread_exit(NULL);
+    if(number >= 0){
+      printf("RECEIVING OPERATION...\n");
+      if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+        printf("Error recv\n");
+        pthread_exit(NULL);
     	}
-		sscanf(buffer, "%d %d", &operation, &number);
+      printf("BUFFER: %s\n", buffer);
+	    sscanf(buffer, "%d %d", &operation, &number);
+      printf("OPERATION: %d\nNUMBER: %d\n", operation, number);
   	}
   	//RECIEVE STRING
   	switch(operation){
   		case NAME:
   			response = OK;
   			sprintf(buffer, "%d %d", response, NUM_CHAT_TABLES);
+        printf("...SENDING RESPONSE\n");
   			sendString(data->client_fd, buffer);
-  			sleep(1);
+        sleep(1);
   			sprintf(buffer, "%s %s %s", data->tables[0].topic, data->tables[1].topic, data->tables[2].topic);
-  			sendString(data->client_fd, buffer);
+        printf("...SENDING TOPICS\n");
+        sendString(data->client_fd, buffer);
   			break;
   		case TOPIC:
   			response = KEY;
   			chat.topic = number;
-  			
-  			sprintf(buffer, "%d 0", response);
-  			sendString(data->client_fd, buffer);
 
-  			for (int i = 0; i < NUM_CHAT_TABLES; i++) {
-  			    if(chat.topic == i){
-  			        sprintf(buffer, "%s", data->tables[i].key);
-  			        sendString(data->client_fd, buffer);
-  			        break;
-  			    }
-  			}
+  			sprintf(buffer, "%d 0", response);
+        printf("...SENDING RESPONSE\n");
+  			sendString(data->client_fd, buffer);
+        sleep(1);
+        sprintf(buffer, "%s", data->tables[chat.topic].key);
+        printf("...SENDING KEY\n");
+        sendString(data->client_fd, buffer);
   			break;
   		case SEND:
-  		    //char message[BUFFER_SIZE]; 
-  		    if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
-        	    printf("Error recv\n");
-        	    pthread_exit(NULL);
-        	}
-        	
-        	//sscanf(buffer, "%s", message); // GET MESSAGE, MAYBE NOT NECESSARY BECAUSE buffer HAS THE MSG
-        	
-        	for (int i = 0; i < NUM_CHAT_TABLES; i++) {
-  			    if(chat.topic == i){
-  			        if(data->tables[i].numOfMessages < MAX_MESSAGES_PER_TABLE){
-  			            data->tables[i].messages[data->tables[i].numOfMessages++] = buffer;
-  			            //data->tables[i].messages[data->tables[i].numOfMessages++] = message;
-  			        } else{
-  			            for (int j = 0; j < MAX_MESSAGES_PER_TABLE; j++) {
-  			                if(j != MAX_MESSAGES_PER_TABLE - 1){
-  			                    data->tables[i].messages[j] = buffer;
-  			                    //data->tables[i].messages[j] = message;
-  			                } else {
-  			                    data->tables[i].messages[j] = data->tables[i].messages[j + 1];
-  			                }
-  			            }
-  			        }
-  			        break;
-  			    }
-  			}
-        	
+        printf("RECEIVING MESSAGE...\n");
+		    if ( !recvString(data->client_fd, buffer, BUFFER_SIZE) ) {
+    	    printf("Error recv\n");
+    	    pthread_exit(NULL);
+      	}
+        printf("BUFFER: %s\n", buffer);
+
+        if(data->tables[chat.topic].numOfMessages < MAX_MESSAGES_PER_TABLE){
+          sscanf(buffer, "%s", data->tables[chat.topic].messages[data->tables[chat.topic].numOfMessages]);
+          data->tables[chat.topic].numOfMessages += 1;
+        } else{
+          for (int j = 0; j < MAX_MESSAGES_PER_TABLE; j++) {
+            if(j == MAX_MESSAGES_PER_TABLE - 1){
+              sscanf(buffer, "%s", data->tables[chat.topic].messages[j]);
+            } else {
+              strcpy(data->tables[chat.topic].messages[j], data->tables[chat.topic].messages[j + 1]);
+            }
+          }
+        }
+
   			break;
   		case SHOW:
-  		    for (int i = 0; i < NUM_CHAT_TABLES; i++) {
-  		        if(chat.topic == i){
-  		            response = MESSAGES;
-  		            sprintf(buffer, "%d %d", response, data->tables[i].numOfMessages);
-  		            sendString(data->client_fd, buffer);
-  		            for (int j = 0; j < data->tables[i].numOfMessages; j++) {
-  		                //sprintf(buffer, "%s", data->tables[i].messages[j]);
-  		                sendString(data->client_fd, data->tables[i].messages[j]);
-  		            }
-  		            break;
-  		        }
-  		    }
+        response = MESSAGES;
+        sprintf(buffer, "%d %d", response, data->tables[chat.topic].numOfMessages);
+        printf("...SENDING RESPONSE\n");
+        sendString(data->client_fd, buffer);
+        for (int j = 0; j < data->tables[chat.topic].numOfMessages; j++) {
+          sleep(1);
+          printf("...SENDING MESSAGE\n");
+          sendString(data->client_fd, data->tables[chat.topic].messages[j]);
+        }
   			break;
   		case EXIT:
-  		    response = BYE;
-  		    sprintf(buffer, "%d 0", response);
+        printf("Client left\n");
+		    response = BYE;
+		    sprintf(buffer, "%d 0", response);
+        printf("...SENDING RESPONSE\n");
   			sendString(data->client_fd, buffer);
   			break;
   	}
   	number = 0;
   }
+
   pthread_exit(NULL);
 }
 
@@ -311,15 +301,15 @@ void initChatTables(chat_table_t *chat_tables){
     chat_tables[i].numOfMessages = 0;
     if(i == 0){
         chat_tables[i].topic = "Math";
-        chat_tables[i].key = "encriptionkey1";
+        chat_tables[i].key = "bitches";
     }
     else if(i == 1){
         chat_tables[i].topic = "Nezfliz";
-        chat_tables[i].key = "encriptionkey2";
+        chat_tables[i].key = "seviches";
     }
     else if(i == 2){
         chat_tables[i].topic = "Chess";
-        chat_tables[i].key = "encriptionkey2";
+        chat_tables[i].key = "jajajiel";
     }
   }
 }

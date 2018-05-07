@@ -29,7 +29,7 @@ void printLocalIPs()
 
     printf("Server IP addresses:\n");
 
-	while (tmp) 
+	while (tmp)
 	{
 		if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
 		{
@@ -78,7 +78,7 @@ int initServer(char * port, int max_queue)
     // SOCKET
     // Open the socket using the information obtained
     server_fd = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
-    if (server_fd == -1) 
+    if (server_fd == -1)
     {
         close(server_fd);
         fatalError("ERROR: socket");
@@ -146,7 +146,7 @@ int connectSocket(char * address, char * port)
     // SOCKET
     // Open the socket using the information obtained
     connection_fd = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
-    if (connection_fd == -1) 
+    if (connection_fd == -1)
     {
         close(connection_fd);
         fatalError("ERROR: socket");
