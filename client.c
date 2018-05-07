@@ -64,43 +64,48 @@ void usage(char *program){
     Main menu with the options available to the user
 */
 void chatOperations(int connection_fd) {
+	// array thats saves server response
 	char buffer[BUFFER_SIZE];
+	// array that stores client's name
 	char name[MAX_NAME_SIZE];
+	// our chats are filtered by a topics that are saved in this array
 	char topics[3][MAX_NAME_SIZE];
+	// this will save the client's +chat_room+ selection
 	int chat_room = 4;
-	char opt;
+	// this will save user's action in a +chat_room+
+	char opt = 'a';
+	// this will save the current status of client-server
 	int operation = NAME;
+	// key value to encrypt/decrypt the text (each +chat_room+ has it's own key)
 	char KEY_VAL[20];
+	// array with user's message
 	char message[BUFFER_SIZE];
+	// same as +opertaion+ but server-client
 	int response = OK;
+	// amount of messages in the +chat_room+
 	int numOfMessages;
 
 	// Start interaction with user's client
 	printf("Enter your display name: ");
 	scanf("%s", name);
+	// Write message to server
 	sprintf(buffer, "%d %s", operation, name);
-	//printf("...SENDING NAME\n");
 	sendString(connection_fd, buffer);
 
 	// Recieve response of the user creation
-	//printf("RECEIVING SERVER RESPONSE...\n");
 	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
     printf("The server got lost while finding the topics\n");
     exit(EXIT_FAILURE);
   }
-	//printf("BUFFER: %s\n", buffer);
   sscanf(buffer, "%d %d", &response, &chat_room);
-	//printf("RESPONSE: %d\nTOPICS: %d\n", response, chat_room);
+
 	if(response == OK) {
-	// Recieve the topics if the name creating was OK
-		//printf("RECEIVING TOPICS...\n");
+		// Recieve the topics if the name creating was OK
 		if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 	    printf("The server got lost while finding the topics\n");
 	    exit(EXIT_FAILURE);
 	  }
-		//printf("BUFFER: %s\n", buffer);
 	  sscanf(buffer, "%s %s %s", topics[0], topics[1], topics[2]);
-		//printf("TOPICS: %s %s %s\n", topics[0], topics[1], topics[2]);
 	  // Ask user what topics does he want to join, save in chat_room
 	  printf("\n-+-+-+-+- Select a topic -+-+-+-+-\n");
 	  printf("\t 0. %s\n", topics[0]);
@@ -113,33 +118,30 @@ void chatOperations(int connection_fd) {
 		printf("Something went wrong creating your user. Try again");
 		exit(EXIT_FAILURE);
 	}
+	// Send the topic selected by the user
 	operation = TOPIC;
 	sprintf(buffer, "%d %d", operation, chat_room);
-	//printf("...SENDING OPERATION\n");
 	sendString(connection_fd, buffer);
 
-	//printf("RECEIVING RESPONSE...\n");
+	// We are added to the server room, we wait for the key in order to comunicate
 	if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
     printf("The server had problems connecting you with the room\n");
     exit(EXIT_FAILURE);
 	}
-	//printf("BUFFER: %s\n", buffer);
 	sscanf(buffer, "%d", &response);
-	//printf("RESPONSE: %d\n", response);
 	if(response == KEY) {
-		//printf("RECEIVING KEY...\n");
+		// If the server sends the key response we star listening for the key value
 		if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
       printf("The server had problems with the ids\n");
       exit(EXIT_FAILURE);
 	  }
-		//printf("BUFFER: %s\n", buffer);
 	  sscanf(buffer, "%s", KEY_VAL);
-		//printf("KEY: %s\n", KEY_VAL);
 	} else {
 		printf("An error happend with the key\n");
 		exit(EXIT_FAILURE);
 	}
-
+	// We are ready to start using the messaging system with our server and other
+	// clients
 	while(opt != 'e'){
 		printf("\n-+-+-+-+- ChatRoom Menu -+-+-+-+-\n");
 		printf("\tw. Write Message\n");
@@ -150,69 +152,64 @@ void chatOperations(int connection_fd) {
 		getchar();
 		switch (opt) {
 			case 'w':
+				// The user will send a new message, we notify the server
 				operation = SEND;
 				sprintf(buffer, "%d 0", operation);
-				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
-
+				// Ask user for message
 				printf("Enter message:\n");
 				fgets(message, BUFFER_SIZE, stdin);
-
 				sprintf(buffer, "%s:%s", name, message);
-
-				//scanf("%s", message);
-				//getchar();
 
 				// ENCRYPT MESSAGE
 
-				//printf("...SENDING MESSAGE\n");
+				// Send encrypted text to server
 				sendString(connection_fd, buffer);
 				break;
 			case 'r':
+				// The user wants to see all the messages, we notify the server
 				operation = SHOW;
 				sprintf(buffer, "%d 0", operation);
-				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
 
-				//printf("RECEIVING RESPONSE...\n");
+				// We'll recieve the number of messages that the server will send
 				if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 					printf("The server had problems with the ids\n");
 					exit(EXIT_FAILURE);
 				}
-				//printf("BUFFER: %s\n", buffer);
 				sscanf(buffer, "%d %d", &response, &numOfMessages);
-				//printf("RESPONSE: %d\nMESSAGES: %d\n", response, numOfMessages);
 
+				// We start listening for the messages sent by the server
 				for (size_t i = 0; i < numOfMessages; i++) {
-					//printf("RECEIVING MESSAGE...\n");
 					if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 						printf("The server had problems with the ids\n");
 						exit(EXIT_FAILURE);
 					}
-					//printf("BUFFER: %s\n", buffer);
-					// BUFFER IS MESSAGE (ENCRIPTED) DECRYPT MSG
 
+					// BUFFER IS MESSAGE (ENCRIPTED) DECRYPT BUFFER
+
+					// This will print the message like +name+:+message+
 					printf("\t%s\n", buffer);
 				}
 				break;
 			case 'e':
+				// The user wants to quit, we notify the server
 				operation = EXIT;
 				sprintf(buffer, "%d 0", operation);
-				//printf("...SENDING OPERATION\n");
 				sendString(connection_fd, buffer);
 
-				//printf("RECEIVING RESPONSE...\n");
+				// Due to protocol, we listen after sending EXIT
 				if ( !recvString(connection_fd, buffer, BUFFER_SIZE) ) {
 		      printf("The server had problems with the ids\n");
 		      exit(EXIT_FAILURE);
 			  }
-				//printf("BUFFER: %s\n", buffer);
 				sscanf(buffer, "%d", &response);
 				break;
 			default:
 				printf("Invalid option. Try again...\n");
 		    continue;
 		}
+		// Finish interaction with the server, end of program
 		if(response == BYE) {
 			printf("Thanks for using our chat tables!\n");
 			break;
